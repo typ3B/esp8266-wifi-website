@@ -1,0 +1,53 @@
+//https://github.com/me-no-dev/ESPAsyncWebServer/blob/master/examples/CaptivePortal/CaptivePortal.ino
+
+#include <DNSServer.h>
+#ifdef ESP32
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#elif defined(ESP8266)
+#include <ESP8266WiFi.h>
+#include <ESPAsyncTCP.h>
+#include <Arduino.h>
+#include <Hash.h>
+#include "FS.h"
+#endif
+#include "ESPAsyncWebServer.h"
+
+DNSServer dnsServer;
+AsyncWebServer server(80);
+
+class CaptiveRequestHandler : public AsyncWebHandler {
+public:
+  CaptiveRequestHandler() {}
+  virtual ~CaptiveRequestHandler() {}
+
+  bool canHandle(AsyncWebServerRequest *request){
+    //request->addInterestingHeader("ANY");
+    return true;
+  }
+
+  void handleRequest(AsyncWebServerRequest *request) {
+    request->send(SPIFFS, "/ALCOcard1.html", "text/html", false);
+  }
+};
+
+
+void setup(){
+  //your other setup stuff...
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP("El Norteno Menu");
+  dnsServer.start(53, "*", WiFi.softAPIP());
+  server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER);//only when requested from AP
+  //more handlers...
+  server.begin();
+
+Serial.begin(115200);
+  
+if(!SPIFFS.begin()){
+   Serial.println("An Error has occurred while mounting SPIFFS");
+   return;
+ }
+}
+void loop(){
+  dnsServer.processNextRequest();
+}
